@@ -1,34 +1,29 @@
 package Database;
 
+import Classes.Game;
+
 import java.sql.*;
+import java.util.ArrayList;
 
 public class GameImplementation implements GameDAO {
     Connection con;
-    public GameImplementation() {
-        System.out.println("Start...");
-        this.con = databaseConnection.makeConnection();
+    public GameImplementation(Connection con) {
+        this.con = con;
     }
-
-
     @Override
-    public int AddGame(int User_id, int score, int timeSpent) {
-        String requete_insertion = "INSERT INTO `games`( `user_id`, `score`, `time_spent`) VALUES ("+ User_id+","+score+","+ timeSpent+")";
-        Statement st = null;
-        if (con != null) {
-            try {
-                st = con.createStatement();
-                int a = st.executeUpdate(requete_insertion);
-                if (a > 0) {
-                    System.out.println("done, inserted!");
-                    return a;
-                }
-            } catch (SQLException e) {
-                if (e.getErrorCode() == 1062) {
-                    return -1;
-                }
-                throw new RuntimeException(e);
-            }
+    public int AddGame(int user_id, int score, int timeSpent) {
+        String query = "INSERT INTO games (user_id, score, time_spent) VALUES (?, ?, ?)";
+        try {
+            PreparedStatement ps = con.prepareStatement(query);
+            ps.setInt(1, user_id);
+            ps.setInt(2, score);
+            ps.setInt(3, timeSpent);
+            return ps.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+
         return 0;
     }
 
@@ -52,27 +47,57 @@ public class GameImplementation implements GameDAO {
     }
 
     @Override
-    public int showHistorty(int User_id) {
-        return 0;
-    }
+    public Game getGame(int id) {
+        String query = "SELECT * FROM games WHERE id = ?";
 
-    @Override
-    public ResultSet selectGame(String requete_selection) {
-        if (con != null) {
-            Statement st = null;
-            try {
-                st = con.createStatement();
-                ResultSet rs = st.executeQuery(requete_selection);
-                return rs;
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
+        try {
+            PreparedStatement ps = con.prepareStatement(query);
+            ps.setInt(1, id);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                Game game = new Game();
+                game.setId(rs.getInt("id"));
+                game.setUser_id(rs.getInt("user_id"));
+                game.setScore(rs.getInt("score"));
+                game.setTimeSpent(rs.getInt("time_spent"));
+                game.setPlayedAt(rs.getTimestamp("played_at"));
+
+                return game;
             }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+
         return null;
     }
 
     @Override
-    public void afficherResultSet(ResultSet rs) {
+    public ArrayList<Game> showHistorty(int user_id) {
+        ArrayList<Game> games = new ArrayList<>();
+        String query = "SELECT * FROM games WHERE user_id = ? ORDER BY played_at DESC";
 
+        try {
+            PreparedStatement ps = con.prepareStatement(query);
+            ps.setInt(1, user_id);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Game game = new Game();
+                game.setId(rs.getInt("id"));
+                game.setUser_id(rs.getInt("user_id"));
+                game.setScore(rs.getInt("score"));
+                game.setTimeSpent(rs.getInt("time_spent"));
+                game.setPlayedAt(rs.getTimestamp("played_at"));
+
+                games.add(game);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return games;
     }
 }

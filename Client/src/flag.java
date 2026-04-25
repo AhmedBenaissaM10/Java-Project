@@ -1,17 +1,21 @@
+import Classes.User;
 import Database.GameImplementation;
+import Database.UserImplementation;
+import Database.databaseConnection;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.Connection;
 import java.util.*;
 import java.util.List;
 
 public class flag extends JFrame {
+    User you;
     ImageIcon image;
-    JLabel label, scorelb, timerlb;
-    int score = 0;
-    int timeLeft = 30;
+    JLabel label, scorelb, timerlb,roundlb;
+    int score = 0, timeLeft = 30, timeSpent = 0;
     String currentCountry = "";
     javax.swing.Timer countdownTimer;
     GameImplementation game;
@@ -19,20 +23,25 @@ public class flag extends JFrame {
     String[] countries = {"Algeria", "Argentina", "Brazil", "Egypt", "France", "Germany", "Morocco", "Spain", "Tunisia"};
     int index = 0;
 
-    public flag() {
+    public flag(User player) {
         this.setTitle("Flag");
         this.setSize(550, 550);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setLayout(new BorderLayout());
-        game = new GameImplementation();
+        Connection con = databaseConnection.makeConnection();
+        game = new GameImplementation(con);
+        this.you = player;
         // --- Top bar: Score + Timer ---
-        scorelb = new JLabel(score + " out of " + countries.length, SwingConstants.CENTER);
+        roundlb = new JLabel("1 / "+countries.length, SwingConstants.CENTER);
+        scorelb = new JLabel("Score : "+score, SwingConstants.CENTER);
         timerlb = new JLabel("Time : " + timeLeft, SwingConstants.CENTER);
-        scorelb.setFont(new Font("Arial", Font.BOLD, 16));
-        timerlb.setFont(new Font("Arial", Font.BOLD, 16));
+        roundlb.setFont(new Font("Arial", Font.BOLD, 12));
+        scorelb.setFont(new Font("Arial", Font.BOLD, 12));
+        timerlb.setFont(new Font("Arial", Font.BOLD, 12));
 
-        JPanel topPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        JPanel topPanel = new JPanel(new GridLayout(1, 3, 20, 0));
         topPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        topPanel.add(roundlb);
         topPanel.add(scorelb);
         topPanel.add(timerlb);
         timerlb.setText("Time : " + timeLeft);
@@ -86,10 +95,19 @@ public class flag extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 timeLeft--;
+                timeSpent++;
                 timerlb.setText("Time : " + timeLeft);
                 if (timeLeft <= 0) {
                     countdownTimer.stop();
-                    changeFlag();
+                    for (JButton btn : new JButton[]{option1, option2, option3, option4}) {
+                        if (btn.getText().equals(currentCountry)) {
+                            btn.setBackground(Color.GREEN);
+                        }
+                    }
+                    new javax.swing.Timer(1000, e1 -> {
+                        ((javax.swing.Timer)e1.getSource()).stop();
+                        changeFlag();
+                    }).start();
                 }
             }
         });
@@ -100,8 +118,10 @@ public class flag extends JFrame {
     void startGame() {
         score = 0;
         index = 0;
+        timeSpent = 0;
         restartTimer();
-        scorelb.setText(score + " out of " + countries.length);
+        scorelb.setText("Score : "+score);
+        roundlb.setText((index+1)+" / "+countries.length);
         changeFlag();
         setOptionsEnabled(true);
         startBtn.setVisible(false);
@@ -117,6 +137,7 @@ public class flag extends JFrame {
             return;}
 
         if (index != 0) restartTimer();
+        roundlb.setText((index+1)+" / "+countries.length);
         currentCountry = countries[index++];
         ImageIcon originalIcon = new ImageIcon("src/flags/" + currentCountry + ".png");
         Image scaledImage = originalIcon.getImage().getScaledInstance(275, 180, Image.SCALE_SMOOTH);
@@ -157,7 +178,7 @@ public class flag extends JFrame {
             }
         }
 
-        scorelb.setText(score + " out of " + countries.length);
+        scorelb.setText("Score : "+score);
 
         countdownTimer.stop();
 
@@ -172,13 +193,13 @@ public class flag extends JFrame {
         startBtn.setVisible(true);
         countdownTimer.stop();
         String message;
-        game.AddGame(1,score,20);
-        if (score == countries.length) message = "Perfect!";
-        else if (score > countries.length / 2) message = "Good job!";
-        else message = "Try again!";
+        game.AddGame(you.getUser_id(),score,20);
+        if (score == countries.length) message = "Perfect";
+        else if (score > countries.length / 2) message = "Good job";
+        else message = "Try again";
         JOptionPane.showMessageDialog(this,
-                message+"! Your score: " + score + " out of " + countries.length,
-                "End of Game", JOptionPane.INFORMATION_MESSAGE);
+                message+ " "+ you.getUsername()+"! Your score: " + score + " out of " + countries.length+" at " + timeSpent + " seconds",
+                "End of Classes.Game", JOptionPane.INFORMATION_MESSAGE);
 
     }
 
@@ -189,7 +210,7 @@ public class flag extends JFrame {
     }
 
     public static void main(String[] args) {
-        flag dsh = new flag();
+        flag dsh = new flag(new User(1,"Ahmed",0));
         dsh.setVisible(true);
     }
 }

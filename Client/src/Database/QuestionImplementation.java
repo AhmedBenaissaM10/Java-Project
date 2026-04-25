@@ -1,15 +1,13 @@
 package Database;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import Classes.Question;
+
+import java.sql.*;
 
 public class QuestionImplementation implements QuestionDAO{
     Connection con;
-    public QuestionImplementation() {
-        System.out.println("Start...");
-        this.con = databaseConnection.makeConnection();
+    public QuestionImplementation(Connection con) {
+        this.con = con;
     }
     @Override
     public int AddQuestion(String country, String opt1, String opt2, String opt3) {
@@ -42,14 +40,33 @@ public class QuestionImplementation implements QuestionDAO{
     public int updateQuestion(String country, String opt1, String opt2, String opt3) {
         return 0;
     }
-
     @Override
-    public ResultSet selectQuestion(String requete_selection) {
+    public Question getQuestion(int id) {
+        String query = "SELECT * FROM questions WHERE id = ?";
+
+        try {
+            PreparedStatement ps = con.prepareStatement(query);
+            ps.setInt(1, id);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                Question q = new Question();
+                q.setId(rs.getInt("id"));
+                q.setAnswer(rs.getString("country"));
+                q.setOption1(rs.getString("option1"));
+                q.setOption2(rs.getString("option2"));
+                q.setOption3(rs.getString("option3"));
+
+                return q;
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         return null;
     }
 
-    @Override
-    public void afficherResultSet(ResultSet rs) {
 
-    }
 }
