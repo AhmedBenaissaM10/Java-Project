@@ -3,6 +3,7 @@ package Database;
 import Classes.User;
 
 import java.sql.*;
+import java.util.ArrayList;
 
 public class UserImplementation implements UserDAO {
     Connection con;
@@ -76,6 +77,31 @@ public class UserImplementation implements UserDAO {
         }
 
         return 0;
+    }
+    @Override
+    public ArrayList<User> getAllUsers() {
+
+        ArrayList<User> users = new ArrayList<>();
+        String query = "SELECT * FROM `user`";
+
+        try {
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery(query);
+
+            while (rs.next()) {
+                User user = new User();
+
+                user.setUser_id(rs.getInt("user_id"));
+                user.setUsername(rs.getString("username"));
+                user.setBest_game_id(rs.getInt("best_game_id"));
+                users.add(user);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return users;
     }
 
 
