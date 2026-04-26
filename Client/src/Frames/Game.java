@@ -1,41 +1,46 @@
-import Classes.User;
-import Database.GameImplementation;
-import Database.UserImplementation;
-import Database.databaseConnection;
+package Frames;
+
+import ClassesRemote.GameRemote;
+import ClassesRemote.Question;
+import ClassesRemote.User;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.sql.Connection;
+import java.rmi.RemoteException;
+
+import java.text.CollationElementIterator;
 import java.util.*;
 import java.util.List;
 
-public class flag extends JFrame {
-    User you;
-
+public class Game extends JFrame {
+    User player;
+    GameRemote game;
     ImageIcon image;
     JLabel label, scorelb, timerlb, roundlb;
     int score = 0, timeLeft = 30, timeSpent = 0;
     String currentCountry = "";
     javax.swing.Timer countdownTimer;
-    GameImplementation game;
+    ArrayList<Question> Questions;
     JButton startBtn, option1, option2, option3, option4;
     String[] countries = {"Algeria", "Argentina", "Brazil", "Egypt", "France", "Germany", "Morocco", "Spain", "Tunisia"};
     int index = 0;
 
-    public flag(User player, UserImplementation userDAO, GameImplementation gameDAO) {
-        this.setTitle("Flag");
+    public Game(User player, GameRemote game) throws RemoteException {
+        this.setTitle("Game");
         this.setSize(600, 500);
         this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         this.addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosed(java.awt.event.WindowEvent e) {
-                new MainMenu(player, userDAO, gameDAO).setVisible(true);
+                new MainMenu(player, game).setVisible(true);
             }
         });
         this.setLayout(new BorderLayout());
-        this.you = player;
-        this.game = gameDAO;
+        this.player = player;
+        this.game =game;
+        this.Questions = game.getQuestions();
+        Collections.shuffle(Questions);
 
         // --- Colors ---
         Color darkBg    = new Color(28, 30, 45);
@@ -47,7 +52,7 @@ public class flag extends JFrame {
         getContentPane().setBackground(darkBg);
 
         // --- Top bar: Round + Score + Timer ---
-        roundlb = new JLabel("1 / " + countries.length, SwingConstants.CENTER);
+        roundlb = new JLabel("1 / " + Questions.size(), SwingConstants.CENTER);
         scorelb = new JLabel("Score : " + score, SwingConstants.CENTER);
         timerlb = new JLabel("Time : " + timeLeft, SwingConstants.CENTER);
 
@@ -133,7 +138,13 @@ public class flag extends JFrame {
         startBtn.setBorderPainted(false);
         startBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         startBtn.setPreferredSize(new Dimension(140, 40));
-        startBtn.addActionListener(e -> startGame());
+        startBtn.addActionListener(e -> {
+            try {
+                startGame();
+            } catch (RemoteException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
 
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottomPanel.setBackground(darkBg);
@@ -161,7 +172,11 @@ public class flag extends JFrame {
                     }
                     new javax.swing.Timer(1000, e1 -> {
                         ((javax.swing.Timer) e1.getSource()).stop();
-                        changeFlag();
+                        try {
+                            changeFlag();
+                        } catch (RemoteException ex) {
+                            throw new RuntimeException(ex);
+                        }
                     }).start();
                 }
             }
@@ -169,15 +184,16 @@ public class flag extends JFrame {
 
         setOptionsEnabled(false);
         changeFlag();
+        this.setLocationRelativeTo(null);
     }
 
-    void startGame() {
+    void startGame() throws RemoteException {
         score = 0;
         index = 0;
         timeSpent = 0;
         restartTimer();
         scorelb.setText("Score : " + score);
-        roundlb.setText((index + 1) + " / " + countries.length);
+        roundlb.setText((index + 1) + " / " + Questions.size());
         changeFlag();
         setOptionsEnabled(true);
         startBtn.setVisible(false);
@@ -190,14 +206,15 @@ public class flag extends JFrame {
         countdownTimer.restart();
     }
 
-    void changeFlag() {
-        if (index == countries.length) {
+    void changeFlag() throws RemoteException {
+        if (index == Questions.size()) {
             endGame();
             return;
         }
         if (index != 0) restartTimer();
-        roundlb.setText((index + 1) + " / " + countries.length);
-        currentCountry = countries[index++];
+        roundlb.setText((index + 1) + " / " + Questions.size());
+        Question currentQuestion = Questions.get(index++);
+        currentCountry = currentQuestion.getAnswer();
         ImageIcon originalIcon = new ImageIcon("src/flags/" + currentCountry + ".png");
         Image scaledImage = originalIcon.getImage().getScaledInstance(275, 180, Image.SCALE_SMOOTH);
         image = new ImageIcon(scaledImage);
@@ -205,12 +222,9 @@ public class flag extends JFrame {
 
         List<String> opts = new ArrayList<>();
         opts.add(currentCountry);
-        List<String> pool = new ArrayList<>(Arrays.asList(countries));
-        pool.remove(currentCountry);
-        Collections.shuffle(pool);
-        opts.add(pool.get(0));
-        opts.add(pool.get(1));
-        opts.add(pool.get(2));
+        opts.add(currentQuestion.getOption1());
+        opts.add(currentQuestion.getOption2());
+        opts.add(currentQuestion.getOption3());
         Collections.shuffle(opts);
 
         option1.setText(opts.get(0));
@@ -240,22 +254,51 @@ public class flag extends JFrame {
         countdownTimer.stop();
         new javax.swing.Timer(1000, e -> {
             ((javax.swing.Timer) e.getSource()).stop();
-            changeFlag();
+            try {
+                changeFlag();
+            } catch (RemoteException ex) {
+                throw new RuntimeException(ex);
+            }
         }).start();
     }
 
-    void endGame() {
+    void endGame() throws RemoteException {
         setOptionsEnabled(false);
         startBtn.setVisible(true);
         countdownTimer.stop();
-        game.AddGame(you.getUser_id(), score, timeSpent);
-        String message;
-        if (score == countries.length)       message = "🏆 Perfect!";
-        else if (score > countries.length / 2) message = "👍 Good job!";
-        else                                   message = "😅 Try again!";
+        int gameId = game.AddGame(player.getUser_id(), score, timeSpent);
+        boolean newBest = false;
 
+        if (player.getBest_game_id() == 0) {
+            game.UpdateUser(player.getUser_id(), gameId);
+            player.setBest_game_id(gameId);
+            newBest = true;
+        } else {
+            ClassesRemote.Game bestGame = game.getGame(player.getBest_game_id());
+            if (bestGame.getScore() < score) {
+                game.UpdateUser(player.getUser_id(), gameId);
+                player.setBest_game_id(gameId);
+                newBest = true;
+            }else if (bestGame.getScore() == score){
+                if (bestGame.getTimeSpent() > timeSpent){
+                    game.UpdateUser(player.getUser_id(), gameId);
+                    player.setBest_game_id(gameId);
+                    newBest = true;
+                }
+            }
+        }
+        String notification = "🎮 " + player.getUsername()
+                + " finished a game — Score: " + score + "/" + Questions.size()
+                + " | Time: " + timeSpent + "s"
+                + (newBest ? " | 🌟 NEW BEST SCORE!" : "");
+        game.notifyServer(notification);
+        String message;
+        if (score == Questions.size())       message = "🏆 Perfect!";
+        else if (score > Questions.size() / 2) message = "👍 Good job!";
+        else                                   message = "😅 Try again!";
+        if (newBest) message += "\n🌟 New Best Score!";
         JOptionPane.showMessageDialog(this,
-                message + " " + you.getUsername() + "\nScore : " + score + " / " + countries.length + "\nTime Spent : " + timeSpent + " seconds",
+                message + " " + player.getUsername() + "\nScore : " + score + " / " + Questions.size() + "\nTime Spent : " + timeSpent + " seconds",
                 "End of Game", JOptionPane.INFORMATION_MESSAGE);
     }
 
@@ -263,14 +306,5 @@ public class flag extends JFrame {
         for (JButton btn : new JButton[]{option1, option2, option3, option4}) {
             btn.setEnabled(enabled);
         }
-    }
-
-    public static void main(String[] args) {
-        Connection conn = databaseConnection.makeConnection();
-        UserImplementation userDAO = new UserImplementation(conn);
-        GameImplementation gameDAO = new GameImplementation(conn);
-        User user = userDAO.getUser(1);
-        flag dsh = new flag(user, userDAO, gameDAO);
-        dsh.setVisible(true);
     }
 }

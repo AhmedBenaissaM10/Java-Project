@@ -1,18 +1,27 @@
-import Classes.User;
-import Database.GameImplementation;
-import Database.UserImplementation;
-import Database.databaseConnection;
+package Frames;
+
+import ClassesRemote.GameRemote;
+import ClassesRemote.User;
 
 import javax.swing.*;
 import java.awt.*;
-import java.sql.Connection;
+import java.rmi.RemoteException;
 
 public class MainMenu extends JFrame {
 
-    public MainMenu(User player, UserImplementation userDAO, GameImplementation gameDAO) {
+    public MainMenu(User player,  GameRemote quizz) {
         this.setTitle("Flag Game");
         this.setSize(600, 500);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                try {
+                    quizz.notifyServer("🔴 " + player.getUsername() + " disconnected");
+                } catch (RemoteException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
         this.setLayout(new BorderLayout());
 
         // --- Colors ---
@@ -44,15 +53,27 @@ public class MainMenu extends JFrame {
 
         playBtn.addActionListener(e -> {
             this.dispose();
-            new flag(player, userDAO, gameDAO).setVisible(true);
+            try {
+                new Game(player, quizz).setVisible(true);
+            } catch (RemoteException ex) {
+                throw new RuntimeException(ex);
+            }
         });
         historyBtn.addActionListener(e -> {
             this.dispose();
-            new history(player, userDAO, gameDAO).setVisible(true);
+            try {
+                new History(player, quizz).setVisible(true);
+            } catch (RemoteException ex) {
+                throw new RuntimeException(ex);
+            }
         });
         leaderBtn.addActionListener(e -> {
             this.dispose();
-            new leaderBoard(player, userDAO, gameDAO).setVisible(true);
+            try {
+                new LeaderBoard(player, quizz).setVisible(true);
+            } catch (RemoteException ex) {
+                throw new RuntimeException(ex);
+            }
         });
 
         btnPanel.add(playBtn);
@@ -94,11 +115,5 @@ public class MainMenu extends JFrame {
         return btn;
     }
 
-    public static void main(String[] args) {
-        Connection conn = databaseConnection.makeConnection();
-        UserImplementation userDAO = new UserImplementation(conn);
-        GameImplementation gameDAO = new GameImplementation(conn);
-        User user = userDAO.getUser(1);
-        SwingUtilities.invokeLater(() -> new MainMenu(user, userDAO, gameDAO));
-    }
+
 }

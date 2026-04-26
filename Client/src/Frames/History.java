@@ -1,33 +1,29 @@
-import Classes.Game;
-import Classes.User;
-import Database.GameImplementation;
-import Database.UserImplementation;
-import Database.databaseConnection;
+package Frames;
+
+import ClassesRemote.Game;
+import ClassesRemote.GameRemote;
+import ClassesRemote.User;
+
 import javax.swing.table.DefaultTableCellRenderer;
+import java.rmi.RemoteException;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.Connection;
 import java.util.ArrayList;
 
-public class history extends JFrame {
-
+public class History extends JFrame {
     User player;
-    GameImplementation gameDAO;
-
-    public history(User player, UserImplementation userDAO, GameImplementation gameDAO) {
+    public History(User player, GameRemote game) throws RemoteException {
         this.player = player;
-        this.gameDAO = gameDAO;
-
         this.setTitle("Game History");
         this.setSize(600, 500);
         this.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         this.addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosed(java.awt.event.WindowEvent e) {
-                new MainMenu(player, userDAO, gameDAO).setVisible(true);
+                new MainMenu(player, game).setVisible(true);
             }
         });
         this.setLayout(new BorderLayout());
@@ -43,7 +39,7 @@ public class history extends JFrame {
         getContentPane().setBackground(darkBg);
 
         // --- Fetch data ---
-        ArrayList<Game> list = gameDAO.showHistorty(player.getUser_id());
+        ArrayList<Game> list = game.showHistorty(player.getUser_id());
 
         // --- Top panel ---
         JLabel userLabel = new JLabel("Player : " + player.getUsername(), SwingConstants.CENTER);
@@ -140,11 +136,4 @@ public class history extends JFrame {
         else                   return days + " days ago";
     }
 
-    public static void main(String[] args) {
-        Connection conn = databaseConnection.makeConnection();
-        UserImplementation userDAO = new UserImplementation(conn);
-        GameImplementation gameDAO = new GameImplementation(conn);
-        User user = userDAO.getUser(1);
-        SwingUtilities.invokeLater(() -> new history(user, userDAO, gameDAO));
-    }
 }

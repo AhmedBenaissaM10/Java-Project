@@ -1,32 +1,36 @@
 package Database;
 
-import Classes.Game;
+import ClassesRemote.Game;
 
 import java.sql.*;
 import java.util.ArrayList;
 
 public class GameImplementation implements GameDAO {
     Connection con;
+
     public GameImplementation(Connection con) {
         this.con = con;
     }
+
     @Override
     public int AddGame(int user_id, int score, int timeSpent) {
         String query = "INSERT INTO games (user_id, score, time_spent) VALUES (?, ?, ?)";
         try {
-            PreparedStatement ps = con.prepareStatement(query);
+            PreparedStatement ps = con.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
             ps.setInt(1, user_id);
             ps.setInt(2, score);
             ps.setInt(3, timeSpent);
-            return ps.executeUpdate();
-
+            ps.executeUpdate();
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                return rs.getInt(1); // ← returns the new game's ID
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
 
-        return 0;
+        return -1;
     }
-
     @Override
     public int deleteGame(int id) {
         String requete_delete = "DELETE FROM `games` WHERE id =" + id;
@@ -54,6 +58,33 @@ public class GameImplementation implements GameDAO {
             PreparedStatement ps = con.prepareStatement(query);
             ps.setInt(1, id);
 
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                Game game = new Game();
+                game.setId(rs.getInt("id"));
+                game.setUser_id(rs.getInt("user_id"));
+                game.setScore(rs.getInt("score"));
+                game.setTimeSpent(rs.getInt("time_spent"));
+                game.setPlayedAt(rs.getTimestamp("played_at"));
+
+                return game;
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    @Override
+    public Game getBestGame(int user_id) {
+        String query = "SELECT * FROM games WHERE user_id = ? ORDER BY score DESC LIMIT 1";
+
+        try {
+            PreparedStatement ps = con.prepareStatement(query);
+            ps.setInt(1, user_id);
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {

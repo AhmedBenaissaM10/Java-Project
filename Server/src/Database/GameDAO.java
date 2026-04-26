@@ -1,8 +1,7 @@
 package Database;
 
-import Classes.Game;
+import ClassesRemote.Game;
 
-import java.sql.ResultSet;
 import java.util.ArrayList;
 
 public interface GameDAO {
@@ -10,4 +9,5 @@ public interface GameDAO {
     int deleteGame(int id);
     ArrayList<Game> showHistorty(int User_id);
     Game getGame (int id);
+    Game getBestGame (int id);
 }

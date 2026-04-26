@@ -1,6 +1,8 @@
-package Classes;
+package ClassesRemote;
 
-public class Question {
+import java.io.Serializable;
+
+public class Question implements Serializable {
     int id;
     String Answer;
     String Option1;

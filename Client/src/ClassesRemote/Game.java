@@ -1,8 +1,9 @@
-package Classes;
+package ClassesRemote;
 
+import java.io.Serializable;
 import java.sql.Timestamp;
 
-public class Game {
+public class Game implements Serializable {
     int id;
     int user_id;
     int score;

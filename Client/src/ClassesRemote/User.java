@@ -1,6 +1,8 @@
-package Classes;
+package ClassesRemote;
 
-public class User {
+import java.io.Serializable;
+
+public class User implements Serializable {
     int user_id;
     String username;
     int best_game_id;
@@ -35,14 +37,5 @@ public class User {
 
     public void setBest_game_id(int best_game_id) {
         this.best_game_id = best_game_id;
-    }
-
-    @Override
-    public String toString() {
-        return "User{" +
-                "user_id=" + user_id +
-                ", username='" + username + '\'' +
-                ", best_game_id=" + best_game_id +
-                '}';
     }
 }
